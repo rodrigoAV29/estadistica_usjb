@@ -1,0 +1,1048 @@
+---
+title: "Visualización de datos"
+author: "Walter"
+format: html
+editor: visual
+Integrantes del grupo 5:
+- Mantilla Saravia Daniel José
+- Pachas Ventura Luis Marco
+- Mendoza Felipa Astryd Xihomara
+- Marcos Avalos Ruth Lizeth Edith
+- Pachas Munayco Walter Manuel
+- Acero Valencia Rodrigo
+---
+
+# Paquetes para visualizar datos
+
+```{r}
+install.packages("gridExtra")
+install.packages("gtsummary")
+install.packages("dplyr")
+install.packages("ggplot2")
+install.packages("flextable")
+
+```
+
+```{r}
+#install.packages("performance")
+#install.packages("cardx")
+library(tidyverse)
+library(rio)
+library(here)
+library(gridExtra) ## Para múltiple gráficos en una sola página
+library(GGally) ## Para gráficos de correlación
+library(forcats)
+library(gtsummary)
+library(dplyr)
+library(ggplot2)
+library(flextable)
+```
+
+# Cargando los datos
+
+El *dataset* contiene datos de 218 pacientes con cáncer cervical. El *dataset* incluye 18 variables entre étnicas, ocupacionales y variables ocupacionales.
+
+```{r}
+data_cerv_0 <- import(here("data", "conoc_actit_factor_cancer_cervical.csv"))
+```
+
+## Examinamos los datos
+
+`str()` es la función para ver la estructura de los datos.
+
+```{r}
+str(data_cerv_0)
+```
+
+```{r}
+install.packages("skimr")
+```
+
+```{r}
+library("skimr")
+```
+
+```{r}
+skim(data_cerv)
+```
+
+## Conversión de caracteres a factor (categóricos) usando la función `mutate_if()`
+
+Las variables categóricas (ej. Estadio T) han sido importadas como caracteres. Necesitamos transformalo a factores. En RStudio, factores es el tipo de dato para trabajar con variables categóricas.
+
+```{r}
+data_cerv <- data_cerv_0 |> 
+  mutate_if(is.character, as.factor)
+str(data_cerv)
+```
+
+# Visualizando datos: el molde
+
+Para realizar visualizaciones con el paquete ggplot2, debemos reemplazar lo que esta encerrado en los signos. Este es el molde fundamental para crear gráficos más complejos.
+
+`<midata> |> ggplot(aes(x = <var1>, y = <var2>)) + geom_<xxxx>()`
+
+-   <midata> : el nombre del dataset a utilizar.
+-   \|\> : esto es llamado "pipe", la cual conecta los datos a la función ggplot
+-   \+ : usa + par conectar declaraciones de ggplot
+-   <var> : la variable, cuyos datos serán usados para crear el gráfico.
+-   geom\_<xxxx>: indica la función para crear el tipo de gráfico. Ej. geom_bar, para crear gráficos de barra.
+
+# Visualizando distribución de datos
+
+# 1. Visualizando datos categóricos
+
+Gráficos de barra Los gráficos de barra son adecuados para mostrar frecuencias de variables categóricas.
+
+```{r}
+data_cerv |>  
+  ggplot(aes(x = etnia)) +
+  geom_bar()
+```
+
+Aquí, añadimos la función `fct_infreq()` de paquete forcats para ordenar (en orden decreciente) las barras del conteo, por estado marital.
+
+```{r}
+data_cerv |>  
+  ggplot(aes(x = fct_infreq(etnia))) +
+  geom_bar()
+```
+
+Con la función `labs()` podemos añadir nombres a los ejes del gráficos.
+
+```{r}
+data_cerv |>  
+  ggplot(aes(x = fct_infreq(etnia))) +
+  geom_bar() +
+  labs(y = "Frecuencia", x = "etnia")
+```
+
+Para el gráfico de barra podemos usar frecuencias relativas. Por ejemplo, un gráfico de barras que muestre proporciones. Aquí es necesario calcular las proporciones. Nota que seguida a `y =` se muestra el cálculo para convertir los conteos a proporciones.
+
+```{r}
+data_cerv |>  
+  ggplot(aes(x = etnia, y = ..count../sum(after_stat(count)))) +
+  geom_bar() +
+  labs(y = "Porcentaje", x = "etnia")
+```
+
+# 2. Visualizando Datos Numéricos
+
+## 2.1. Con histogramas
+
+Para visualizar conteos. Nota que aquí, la variable `edad` es numérica y la función para producir un histograma es `geom_histogram()`
+
+```{r}
+data_cerv |>  
+  ggplot(aes(x = edad)) +
+  geom_histogram() +
+  labs(y = "Frecuencia", x = "edad")
+```
+
+Un histograma de proporciones. Aquí `..density..` es la estimación de densidad que reemplaza al conteo crudo. Toda el area del gráfico de densidad suma 1.
+
+```{r}
+data_cerv  |>  
+  ggplot(aes(x = num_hijos)) +
+  geom_histogram(aes(y = ..density..)) +
+  labs(y = "Density", x = "num_hijos")
+```
+
+A veces, puede ser util visualizar gráficos de lado a lado. Aquí dos histogramas lado a lado usando la función `grid.arrange()`
+
+```{r}
+hist_1 = data_cerv |> ggplot(aes(x = num_hijos)) +
+  geom_histogram() +
+  labs(y = "Frecuencia", x = "num_hijos")
+
+hist_2 = data_cerv  |>  
+  ggplot(aes(x = num_hijos)) +
+  geom_histogram(aes(y = ..density..)) +
+  labs(y = "Density", x = "num_hijos")
+```
+
+```{r}
+grid.arrange(hist_1, hist_2, ncol = 2)
+```
+
+Conteo con un número de barras distinto
+
+Podemos cambiar los intervalos para la generación del histograma usando el argumento bins dentro de la función `geom_histogram()`
+
+```{r}
+data_cerv |>  
+  ggplot(aes(x = num_hijos)) +
+  geom_histogram(bins = 30) +
+  labs(y = "Frecuencia", x = "num_hijos")
+```
+
+Modificando los colores de las barras del histograma.
+
+```{r}
+data_cerv |>  
+  ggplot(aes(x = num_hijos)) +
+  geom_histogram(
+    color = "black", ## Color de las barras
+    fill = "green" ## Color de las barras
+    ) + 
+  labs(y = "Frecuencia", 
+       x = "num_hijos")
+```
+
+Modificando color en gráficos de barras. Nota que aquí, usamos el argumento fill para colorear las barras pertenecientes a las categorías.
+
+```{r}
+data_cerv |>  
+  ggplot(aes(x = fct_infreq(etnia), fill = etnia)) +
+  geom_bar() +
+  labs(y = "Frecuencia", x = "etnia")
+```
+
+## 2.2. Con Boxplots (gráfico de cajas y bigotes)
+
+Para mostrar datos de una variable en un gráfico de cajas y bigotes usamos la función `geom_boxplot()`
+
+```{r}
+data_mama |> 
+  ggplot(aes(y = Albumina_g_dL)) + ## Cambia y por x para invertir el gráfico
+  geom_boxplot() +
+  theme(axis.text.x  = element_blank(),
+        axis.ticks.x = element_blank()) +
+  labs(y = "Albumina")
+```
+
+La función nativa de R, `boxplot()`, permite realizar el mismo gráfico.
+
+```{r}
+box_album_base = boxplot(data_mama$Albumina_g_dL,
+                         ylab = "Albumina",
+                         horizontal = TRUE, ## Cambia la dirección del gráfico
+                         col = "salmon") ## Añadimos color
+  
+```
+
+# 3. Visualizando variables categóricas *versus* categóricas
+
+```{r}
+data_cerv |> 
+  ggplot(aes(x = etnia, fill = ocupacion)) +
+  geom_bar(position = "dodge") + ## Sin este argumento, las barras estarán una sobre otras
+  labs(y = "Frecuencia",  
+       x = "etnia",
+       fill = "ocupacion")
+```
+
+Qué esta mal con esto?
+
+```{r}
+data_mama |>   
+  group_by(Estadio_T, Estado_des)  |>  
+  count() |>   
+  # Compute proportions within grade
+  # n is the default variable created by count()
+  group_by(Estadio_T) |>   
+  mutate(Proportion = n/sum(n))  |> 
+  ggplot(aes(x = Estadio_T, y = Proportion, fill = Estado_des)) +
+  geom_bar(position = 'dodge', stat = 'identity') +
+  labs(y = "Proportion",
+       x = "Estadio T",
+       fill = "Desenlace")
+```
+
+```{r}
+addmargins(prop.table(
+  table(data_mama$Estado_des, data_mama$Estadio_T), 
+  margin = 2), 1)
+```
+
+# 4. Visualizando distribución de variables continuas *versus* categóricas
+
+## 4.1. Gráficos de barras
+
+```{r}
+data_mama |> 
+  filter(!is.na(Recep_estrogeno) & !is.na(Estadio_T)) |> 
+  group_by(Recep_estrogeno, Estadio_T) |> 
+  summarise(n = n(),
+            promedio = mean(Ki67_express, na.rm = T),
+            de = sd(Ki67_express, na.rm = T)) |> 
+  ggplot(aes(x = Recep_estrogeno, y = promedio, fill = Estadio_T)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  geom_errorbar(aes(ymin = promedio - de, ymax = promedio + de),
+                width = 0.5, size = 0.75, position = position_dodge(0.9)) +
+  labs(y = "Expresión de KI67", fill = "Estadio_T", x = "Recep_estrogeno")
+```
+
+## 4.1. Boxplots lado a lado
+
+```{r}
+data_mama |>  
+  filter(!is.na(Tam_tumor)& !is.na(Estadio_T))  |> 
+  ggplot(aes(y = Tam_tumor, x = Estadio_T)) +
+  geom_boxplot() +
+  labs(y = "Tamaño", x = "Estadio T")
+```
+
+```{r}
+data_mama |>  
+  filter(!is.na(Tam_tumor)& !is.na(Estadio_T) & !is.na(Recep_estrogeno))  |> 
+  ggplot(aes(y = Tam_tumor, x = Estadio_T, fill = Recep_estrogeno)) +
+  geom_boxplot() +
+  labs(y = "Tamaño", x = "Estadio T")
+```
+
+```{r}
+data_mama |>  
+  filter(!is.na(Tam_tumor)& !is.na(Estadio_T) & !is.na(Recep_estrogeno))  |> 
+  ggplot(aes(y = Tam_tumor, x = Recep_estrogeno, fill = Estadio_T)) +
+  geom_boxplot() +
+  labs(y = "Tamaño", x = "Receptor")
+```
+
+## 4.3. Filas de histogramas
+
+```{r}
+data_mama  |>  
+  filter(!is.na(Estadio_T) & !is.na(Estado_des) & !is.na(hemoglobina_g_dL)) |>
+  group_by(Estadio_N) |>  
+  ggplot(aes(x = hemoglobina_g_dL)) +
+  geom_histogram(aes(y = ..density..), bins = 20,
+                 color = "black", fill = "white") +
+  labs(x = "Hemoglobina (mg/dL)", y = "Proporción") +
+  facet_wrap(~Estadio_N, nrow = 4) +
+  ggtitle("Hemoglobina por Estadio N")
+```
+
+# 5. Visualización para variables continuas versus continuas
+
+Usamos la función geom_point para generar gráficos de dispersión y visualizar la relación de dos varaibles numéricas
+
+```{r}
+data_mama |> 
+  ggplot(aes(x = Albumina_g_dL, y = hemoglobina_g_dL)) +
+  geom_point() +
+  labs(x = "Albumina (mg/dL)", y = "Hemoglobina (mg/dL)")
+```
+
+La función geom_smoth añade una línea de regresión al gráfico. "lm" es para linear model
+
+```{r}
+data_mama |> 
+  ggplot(aes(x = Albumina_g_dL, y = hemoglobina_g_dL)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = TRUE) +
+  labs(x = "Albumina (mg/dL)", y = "Hemoglobina (mg/dL)")
+```
+
+Aquí, función geom_smooth() añade una línea de tendencia suavizada al gráfico.
+
+```{r}
+data_mama |> 
+  ggplot(aes(x = Albumina_g_dL, y = hemoglobina_g_dL)) +
+  geom_point() +
+  geom_smooth(stat = "smooth", se = TRUE) +
+  labs(x = "Albumina (mg/dL)", y = "Hemoglobina (mg/dL)")
+```
+
+Finalmente, la función `ggpairs()` permite visualizar multiple variables numerica a la vez. Aquí, combinamos la funciónm select() (para seleccionar las variables numéricas) y ggpairs, para generar el gráfico y los coeficientes de correlación.
+
+```{r}
+data_mama |>  
+  select(hemoglobina_g_dL, Albumina_g_dL, Supervivencia_meses) %>% 
+  ggpairs(columnLabels = c("Hemoglobina", "Albumin", "Supervivencia meses"))
+```
+
+# 6. Exportando figuras
+
+```{r}
+ggsave(
+  "nombre_de_objeto.png",
+  width = 7, # Ancho
+  height = 4, # Alto
+  dpi = 300 # resolución
+) 
+```
+
+# 7. Prueba de Ajuste
+
+**1. Modelo estadístico**\
+Es una representación matemática que describe relaciones entre variables. Se utiliza para hacer inferencias, predicciones o entender el comportamiento de los datos.
+
+**2. Variable continua**\
+Tipo de variable numérica que puede tomar un número infinito de valores dentro de un rango (por ejemplo, niveles de glucosa o circunferencia de cintura).
+
+**3. Distribución de probabilidad**\
+Describe cómo se distribuyen los valores posibles de una variable aleatoria. Algunas distribuciones comunes incluyen la normal, binomial y chi-cuadrado.
+
+**4. Hipótesis nula (H₀)**\
+Proposición que se plantea al inicio de una prueba estadística y que indica la ausencia de efecto o diferencia. Se rechaza o no según el valor p obtenido.
+
+**5. Valor p**\
+Probabilidad de obtener un resultado igual o más extremo que el observado, si la hipótesis nula fuera cierta. Un valor p menor a 0.05 suele considerarse estadísticamente significativo.
+
+# ¿Que son las pruebas de bondad de ajuste?
+
+Las pruebas de bondad de ajust**e** evalúan qué tan bien los datos observados se ajustan a los valores esperados según un modelo estadístico.
+
+La bondad de ajuste puede evaluarse en al menos dos escenarios principales:
+
+### 1. En modelos de regresión
+
+Por ejemplo, un estudiante podría aplicar un modelo de regresión lineal para evaluar la relación entre el peso de los pacientes de un hospital y su nivel de glucosa. Para determinar si el modelo es adecuado para explicar esta relación, se puede calcular el estadístico de bondad de ajuste R².
+
+El estadístico R² mide el porcentaje de variabilidad de la variable dependiente (en este caso, el nivel de glucosa) que es explicado por el modelo de regresión. Cuanto mayor sea el valor de R², mejor será el ajuste del modelo a los datos observados.
+
+### 2. En distribuciones de probabilidad
+
+En algunos casos, el modelo estadístico que se desea aplicar requiere que los datos sigan una distribución de probabilidad específica, como la distribución normal.
+
+Por otro lado, muchas pruebas de hipótesis utilizan **estadísticos de prueba** (no necesariamente modelos completos). Por ejemplo:
+
+-   Las **pruebas t** (t de Student) usan el estadístico *t*.
+
+-   El **ANOVA** usa el estadístico *F*.
+
+-   Las **pruebas de chi-cuadrado** usan el estadístico χ².
+
+Estas pruebas se basan en las distribuciones teóricas de estos estadísticos para calcular los valores p, los cuales permiten decidir si aceptar o rechazar la hipótesis nula.
+
+Este esta sesión práctica se enfocará en el segundo escenario.
+
+# Cargamos los paquetes necesarios
+
+```{r}
+library(rio)
+library(here)
+
+
+```
+
+# Cargar los datos
+
+```{r}
+data_cerv_0 <- import(here("data", "conoc_actit_factor_cancer_cervical.csv"))
+```
+
+# 1. Para datos continuos
+
+La prueba t de Student y el ANOVA son dos pruebas estadísticas ampliamente utilizadas que permiten evaluar si el valor promedio de una variable numérica difiere entre dos o más grupos o categorías.
+
+Ambas pruebas asumen que la variable continua sigue una distribución normal.\
+Pero, ¿cómo podemos comprobar si esta condición se cumple?\
+Mediante una prueba de bondad de ajuste.
+
+Una de las pruebas más comunes para evaluar la normalidad de una variable numérica es la prueba de Shapiro-Wilk. Esta prueba permite determinar si los datos provienen de una distribución normal, lo cual es un requisito clave antes de aplicar pruebas como la t de Student o el ANOVA.
+
+## Para la variable circun_cintura
+
+Esta variable corresponde a medidas de circunferecia de cintura en centimetros. En R, usamos la función nativa `shapiro.test()` para realizar la prueba de Shapiro-Wilk
+
+```{r}
+shapiro.test(data_glucosa_circun$circun_cintura)
+```
+
+## Para la variable glucosa
+
+Esta variable corresponde a medidas de glucosa en mg/dL
+
+```{r}
+shapiro.test(data_glucosa_circun$glucosa)
+```
+
+## Respecto a la interpretación de los dos resultados
+
+Las hipótesis de la prueba de Shapiro-Wilk
+
+-   La hipótesis nula (H₀) establece que la muestra proviene de una distribución normal.
+
+-   La hipótesis alternativa (H₁) plantea que la muestra no proviene de una distribución normal.
+
+Si tomamos en cuenta que el valor de p aceptado para esta evaluación es \< 0.05, entonces el resultado de la evaluación de normalidad para la variable circunferecia de cintura indica que esta variable NO tiene una distribución normal.
+
+En contraste, el resultado para la variable glucosa (p = 0.7338) indica que la muestra sí proviene de una distribución normal.
+
+# 2. Para datos categóricos
+
+El dataset para esta sesión contiene información sobre el estado de síndrome metabólico. En esta muestra, el número de participantes con síndrome metabólico es 65 de un total de 200.
+
+```{r}
+table(data_glucosa_circun$sindrom_metabolico)
+```
+
+Un estudio previo realizado en Perú reportó una prevalencia de síndrome metabólico del 26,9% (DOI: <https://doi.org/10.1111/j.1365-2362.2009.02191.x>).
+
+En este caso, la prevalencia del estudio previo representa el valor esperado, mientras que la prevalencia observada en nuestro conjunto de datos representa el valor observado.
+
+Uno de los objetivos de nuestro análisis es evaluar si la proporción observada de síndrome metabólico difiere significativamente de la proporción esperada. Para ello, utilizamos la prueba de bondad de ajuste de Chi-cuadrado.
+
+Las hipótesis de esta prueba son las siguientes:
+
+-   **Hipótesis nula (H₀):** No existe una diferencia significativa entre la proporción observada y la esperada.
+
+-   **Hipótesis alternativa (H₁):** Existe una diferencia significativa entre la proporción observada y la esperada.
+
+En R, esta prueba se realiza mediante la función `chisq.test()`, a la cual se deben proporcionar los valores observados y las proporciones esperadas para llevar a cabo la comparación.
+
+```{r}
+chisq.test(x = c(65, 135), p = c(0.269, 0.731))
+```
+
+Interpretación
+
+Dado que el valor de p es mayor a 0.05, podemos concluir que las proporciones observadas no son significativamente diferentes de las proporciones esperadas.
+
+# **9. Regresion Lineal Simple Prueba**
+
+# Cargando los datos
+
+```{r}
+circun_glucosa <- import(here("data", "s09_circunf_glucosa.csv"))
+```
+
+# Sobre los datos para esta práctica
+
+El dataset circun_glucosa, de 1000 personas adultas (\>=20 años de edad), contiene datos glucosa medida en ayunas (en mg/dL), cirunferencia de cintura (en centimetros), tabaquismo y otros datos demográficos.
+
+# 1 Regresión lineal simple
+
+Regresión es una método para evaluar la asociación entre una variable dependiente (tambien llamado desenlace Y) y una o varias variables independientes (predictoras X1, X2,..., Xk). Los modelos de regresión lineal simple (o univariable) utilizan solo solo una variable independiente o predictora X. Ejemplos de preguntas de investigación se puede responder usando un modelo de regresión lineal:
+
+-   ¿Existe una asociación entre el promedio final del curso de Metodos y Sistematización de Métodos Estadísticos (desenlace o variable dependiente) y las horas de sueño (preditor o variable independiente)?
+
+-   ¿Existe una asoación entre el el nivel de glucosa y la circunferencia de cintura?
+
+La ultima pregunta es la que evaluaremos en esta práctica.
+
+## 1.1 El problema en este ejercicio
+
+El desenlace *Y* de interés para este ejercicio es la variable glucosa medida en ayunas. Veamos la distribución de la variable y el promedio en en un histograma.
+
+```{r}
+circun_glucosa |>     ggplot(aes(x = glucosa_mg_dL)) +   geom_histogram(     color = "white",     ) +    labs(y = "Frecuencia",         x = "Glucosa (mg/dL)") +   geom_vline(xintercept = mean(circun_glucosa$glucosa_mg_dL, na.rm = TRUE),              color = "darkred", size = 1.5)
+```
+
+En estos datos, el promedio de la glucosa es:
+
+```{r}
+mean(circun_glucosa$glucosa_mg_dL, na.rm = TRUE)
+```
+
+Una observación importante a partir del histograma y el promedio (el valor esperado) es que existe una gran variación entre los valores de glucosa de los individuos de quienes provienen los datos. Podemos hipotetizar de que otras variables (predictores) podrían influir en esta variación, por ejemplo, la circunferencia de cintura.
+
+## 1.2 Notación en el método de regresión lineal simple
+
+El método de regresión lineal simple encuentra la línea que mejor se ajusta a la descripción lineal entre la glucosa en ayunas y la circunferencia de la cintura, tal como se muestra en la siguiente figura:
+
+```{r}
+plot(glucosa_mg_dL ~ circunf_cintura_cm , data = circun_glucosa,      col = "gray",      ylab = "Glucosa (mg/dL)",      xlab = "Circunferencia de cintura (cm)",      las = 1,      pch = 20,       font.lab = 2, font.axis = 2)   # La función lm() ajusta el modelo de regresión lineal abline(lm(glucosa_mg_dL ~ circunf_cintura_cm , data = circun_glucosa), lwd = 2, col = "darkred")
+```
+
+La ecuación siguiente ecuación describe un modelo de regresión lineal simple para 𝑌 usando un predictor continuo 𝑋. $$ Y = \beta_0 + \beta_1 X + \epsilon $$ Cuando ajustamos un modelo de regresión lineal simple a nuestros datos, estimamos (hallamos) los parámetros del modelo que mejor explican la relación entre las dos variables (desenlace y predictor), incluyendo los coeficientes (β₀, β₁) y el error (𝜀), que representa la variabilidad no explicada por el modelo.
+
+Para un predictor continuo, el intercepto (β₀) es el valor esperado de Y cuando X = 0 (es decir, el promedio del resultado cuando el predictor es cero). La pendiente (β₁) es el cambio promedio en Y por cada unidad de cambio en X. El término de error (𝜀) representa la diferencia entre los valores observados y los valores predichos por el modelo.
+
+Aplicado a nuestro ejemplo, el intercepto (β₀) representa la circunferencia de cintura promedio cuando la glucosa en ayunas es cero (aunque este valor puede no tener sentido práctico, es necesario matemáticamente). La pendiente (β₁) indica cuánto aumenta (o disminuye) en promedio la circunferencia de la cintura por cada unidad adicional de glucosa en ayunas (medida en mg/dL). El error (𝜀) recoge la variación individual que no es explicada solo por la glucosa.
+
+Asi que, como el objetivo es hallar los valores de los parámetros (β₀,β₁,𝜀), es apropiado decir que estamos 'ajustando el modelo de regresión lineal simple' para el problema planteado (a.k.a la asociación entre glucosa y la circunferencia de cintura)
+
+## 1.3 Ajustando el modelo de regresión lineal simple para nuestro problema
+
+En R, usamos la función lm() para ajustar un modelo de regresión lineal. "lm" es la abreviatura para "linear model". Dentro de la función debemos indicarle como argumentos el desenlace X, el predictor Y y la data donde se encuentran las variables. Esta es la estructura para ajustar el modelo con la función lm: lm(y \~ x, data = mis_datos).
+
+Ajustando el modelo para nuestros datos
+
+```{r}
+modelo_ejemplo = lm(glucosa_mg_dL ~ circunf_cintura_cm, data = circun_glucosa)
+```
+
+Para ver los resultados, usamos la función summary() y dentro, el objeto modelo_ejemplo.
+
+```{r}
+summary(modelo_ejemplo)
+```
+
+## 1.4 Interpretando los resultados
+
+La sección Coefficients del resultado:
+
+```{r}
+summary(modelo_ejemplo)$coef
+```
+
+...muestra las estimaciones y las pruebas de hipótesis para el intercepto (β₀), etiquetado como (Intercept), y para el coeficiente de la circunferencia de cintura (la pendiente, β₁), etiquetado como Circunfe_brazo_cm.
+
+En esta misma sección, la columna Estimate muestra los coeficientes estimados del modelo de regresión lineal simple. Así, el modelo que mejor se ajusta tiene un intercepto de 59.474 y una pendiente de 0.49970.
+
+La tabla de coeficientes también muestra el error estándar de cada estimación, su valor t y su valor p (etiquetado como Pr(\>\|t\|)). El valor p del intercepto usualmente no es de interés, pero el valor p del predictor (Circunfe_brazo_cm) prueba la hipótesis nula de que el desenlace NO tiene asociación con el predictor o, dicho de otra manera, que la pendiente es cero. La hipótesis nula plantea que la línea de mejor ajuste es una línea horizontal, lo que indicaría que el promedio esperado del desenlace es el mismo en todos los valores del predictor; es decir, que no existe asociación entre el desenlace (glucosa) y el predictor (circunferencia de cintura).
+
+Finalmente, el valor R-cuadrado es una medida de bondad de ajuste que varía entre 0 (sin asociación) y 1 (asociación lineal perfecta), y corresponde al cuadrado de la correlación de Pearson entre el desenlace y el predictor. Se interpreta como la proporción de la variación en el desenlace que es explicada por el modelo. En nuestro modelo, el R² (R-cuadrado) es 0.0871. Esto significa que aproximadamente el 8.6% de la variación en los valores de glucosa en ayunas se explica por la circunferencia de la cintura
+
+## 1.5 ¿Cómo reportar los resultados del ajuste del modelo de regresión lineal simple?
+
+Tanto si se trata de una tesis o un artículo, abajo un ejemplo de cómo reportar los resultados del presente problema:
+
+> "(...) empleamos un modelo de regresión linear para evaluar la asociación entre el nivel de glucosa en ayunas (mg/dL) y la circunferencia de cintura (cm) usando datos de 965 adultos. 8.71% de la variación en el nivel de glucosa en ayunas fue explicada por la circunferencia de cintura (R²=0.0871). Se encontró una asociación positiva significativa entre la glucosa en ayunas y la circunferencia de cintura (B=0.499; p \<.001). En promedio, por cada diferencia de 1 cm en la circunferencia de cintura, los adultos difieren en el promedio de glucosa en ayunas en 0.499 mg/dL"
+
+Adicionalmente, es buena idea presentar los resultados en un tabla.
+
+```{r}
+theme_gtsummary_language("es")
+
+tabla_reporte <- modelo_ejemplo |> 
+  tbl_regression(intercept = T,
+                        estimate_fun = function(x) style_sigfig(x, digits = 4),
+                        pvalue_fun   = function(x) style_pvalue(x, digits = 3),
+                 label        = list(circunf_cintura_cm ~ "Circunferencia de cintura (cm)")) |>
+  modify_caption("Regresión de la glucosa en ayunas (mg/dL) en función de la circunferencia de cintura")
+
+tabla_reporte
+```
+
+**Exportamos la tabla**
+
+```{r}
+tabla_reporte |>    as_flex_table()  |>    flextable::save_as_docx(path = "tabla_reporte.docx")
+```
+
+# 2 Prueba t de Student para muestras independientes
+
+Imagina que, ahora, luego de haber tomado las mediciones de medidas de glucosa en ayunas (mg/dL) queremos saber si el promedio de glucosa en varones es significativamente diferente del promedio de glucosa en mujeres. Es esta situación, hay dos grupos (varones y mujeres) de muestras independientes.
+
+## 2.1 ¿Cuándo usar la prueba t de Student para muestras independientes?
+
+-   Cuando los dos grupos de muestras a comparar han sido muestreadas de una distribución normal. Aquí podemos usar la prueba de Shapiro-Wilk.
+
+-   Cuando las varianzas de los dos grupos son iguales. Esto puede ser evaluado con la prueba de Levene o la prueba F.
+
+2.2 Usualmente, la hipótesis de la prueba t de Student son:
+
+-   Hipótesis nula (H₀): No hay diferencia entre las medias de los dos grupos. $$ H_0: \mu_1 = \mu_2 $$
+-   Hipótesis alternativa (H₁): Hay una diferencia entre las medias de los dos grupos. $$ H_1: \mu_1 \neq \mu_2 $$
+
+## 2.2 Sobre los datos para esta práctica
+
+El dataset circun_glucosa, de 1000 personas adultas (\>=20 años de edad), contiene datos circunferencia de cintura (en centímetros), la variable sexo y otros datos demográficos.
+
+## 2.3 Resumen y visualización
+
+Resumen
+
+Antes de realizar la prueba t de Student es importante conocer la distribución de los datos e identificar si hay valores perdidos o atípicos. Empecemos por el resumen:
+
+```{r}
+group_by(circun_glucosa, sexo) |> 
+  summarise(
+    count = n(),
+    mean = mean(circunf_brazo_cm, na.rm = TRUE),
+    sd = sd(circunf_brazo_cm, na.rm = TRUE)
+  )
+```
+
+Visualización
+
+```{r}
+circun_glucosa |>  
+  filter(!is.na(sexo)& !is.na(circunf_brazo_cm))  |> 
+  ggplot(aes(y = circunf_brazo_cm, x = sexo)) +
+  geom_boxplot() +
+  labs(y = "Circunferencia del brazo (cm)", x = "sexo")
+```
+
+## 2.4 Pruebas preliminares para evaluar los supuestos de la prueba t de Student
+
+Supuesto 1: los datos deben haber sido muestreados de una distribución normal.
+
+Para esto, usamos la prueba de Shapiro-wilk.
+
+```{r}
+circun_glucosa |>    filter(sexo == "Masculino") |>    summarise(shapiro = list(shapiro.test(circunf_brazo_cm))) |>    pull(shapiro)
+```
+
+```{r}
+circun_glucosa |>    filter(sexo == "Femenino") |>    summarise(shapiro = list(shapiro.test(circunf_brazo_cm))) |>    pull(shapiro)
+```
+
+Supuesto 2: Las varianzas de los dos grupos son iguales Para esto podemos usar la prueba F para evaluar la homogeneidad de varianzas. Esto esta implementado en la función var.test()
+
+```{r}
+ls()
+
+```
+
+```         
+```
+
+```{r}
+var.test(circunf_brazo_cm_sim ~ sexo, data = data_mod)
+```
+
+El valor p de la prueba F es p = 0.3143. Es mayor que el nivel de significancia α = 0.05. En conclusión, no hay una diferencia significativa entre las varianzas de los dos conjuntos (femenino y masculino) de datos. Por lo tanto, podemos usar la prueba t clásica que asume igualdad de varianzas.
+
+## 2.5 Realizamos la prueba t para nuestros datos.
+
+```{r}
+t.test(circunf_brazo_cm ~ sexo, data = circun_glucosa, var.equal = TRUE)
+```
+
+**Interpretando los resultados**
+
+El valor p de la prueba es 0.003615, lo cual es menor que el nivel de significancia α = 0.05. Por lo tanto, podemos concluir que la circunferencia promedio del brazo en hombres es significativamente diferente de la circunferencia promedio en mujeres.
+
+PC3-1\
+SEMANA 10
+
+# Cargamos e instalamos paquetes
+
+```{r}
+install.packages("car")
+install.packages("cards")
+install.packages("broom.helpers")
+```
+
+```{r}
+library(tidyverse)
+library(here)
+library(rio)
+library(gtsummary)
+library(car)
+library(cards)
+library(broom.helpers)
+```
+
+## Cargando los datos
+
+```{r}
+hipert_covid <- import(here("data", "s10_hipert_covid.csv"))
+```
+
+```{r}
+asma <- import(here("data", "s10_asma.csv"))
+```
+
+## 1.2 Estimando OR usando regresión logística para un predictor categórico
+
+```{r}
+hipert_covid_1 <- hipert_covid |> 
+  mutate(hipert = relevel(as.factor(hipert), ref = "no"),
+         desenlace = relevel(as.factor(desenlace), ref = "vivo"))
+```
+
+A continuación, usamos la función `glm()`, general linear model, con el argumento family = binomial para ajustar una regresión logística y `summary()` para ver los resultados.
+
+```{r}
+regre_log <- glm(desenlace ~ hipert,
+                 family = binomial, 
+                 data = hipert_covid_1)
+
+summary(regre_log)
+```
+
+Para obtener el OR en sí (como usualmente se reporta en los estudios), exponenciamos el coeficiente usando la función exp()
+
+```{r}
+exp(coef(regre_log)[-1]) # [-1] elimina la primera fila, al intercepto.
+```
+
+Usamos la función `confint()` para calcular los intervalos de confianza (IC) al 95% para el coeficientes de regresión, y exponenciamos estos valores para obtener los IC del 95% para los OR.
+
+```{r}
+exp(confint(regre_log))[-1, , drop=F]
+```
+
+## 1.4 Estimando OR usando regresión logística para un predictor numérico
+
+```{r}
+regre_log_1 <- glm(desenlace ~ edad, family = binomial, data = hipert_covid_1)
+
+summary(regre_log_1)$coef
+```
+
+```{r}
+exp(coef(regre_log_1)[-1])
+```
+
+```{r}
+exp(confint(regre_log_1)[-1,])
+```
+
+```{r}
+theme_gtsummary_language(language = "es")
+```
+
+```{r}
+tabla_reg_logi <- hipert_covid_1 |>
+  tbl_uvregression(
+    include = c(edad, sexo, hipert),
+    y = desenlace,
+    method = glm,
+    method.args = list(family = binomial),
+    exponentiate = TRUE,
+    conf.int = TRUE,
+    hide_n = TRUE,
+    add_estimate_to_reference_rows = FALSE,
+    pvalue_fun = ~ style_pvalue(.x, digits = 3),
+    estimate_fun = ~ style_number(.x, digits = 2),
+    label = list(
+      edad ~ "Edad (años)",
+      sexo ~ "Sexo",
+      hipert ~ "Hipertensión"
+    )
+  ) |>
+  bold_labels() |>
+  bold_p(t = 0.05) |>
+  modify_header(estimate = "**OR no ajustado**", p.value = "**Valor P**")
+```
+
+IMPRIMIMOS LAS TABLAS
+
+```{r}
+tabla_reg_logi
+```
+
+## 2.3 Ajustamos modelos de regresión de Poisson
+
+```{r}
+reg_poisson1 = glm(episod_asma ~ sexo, data = asma, family = "poisson")
+summary(reg_poisson1)
+```
+
+```{r}
+reg_poisson2 = glm(episod_asma ~ infec_resp_recur, data = asma, family = "poisson")
+summary(reg_poisson2)
+```
+
+```{r}
+reg_poisson2 = glm(episod_asma ~ ghq12, data = asma, family = "poisson")
+summary(reg_poisson2)
+```
+
+## 2.4 Cómo interpretar y reportar los resultados de una regresión de Poisson
+
+```{r}
+tabla_reg_poisson <- asma |>
+  tbl_uvregression(
+    include = c(sexo, infec_resp_recur, ghq12),
+    y = episod_asma,
+    method = glm,
+    method.args = list(family = poisson),
+    exponentiate = TRUE,
+    conf.int = TRUE,
+    hide_n = TRUE,
+    add_estimate_to_reference_rows = FALSE,
+    pvalue_fun = ~ style_pvalue(.x, digits = 3),
+    estimate_fun = ~ style_number(.x, digits = 2),
+    label = list(
+      sexo ~ "Sexo",
+      infec_resp_recur ~ "Infección respiratoria recurrente",
+      ghq12 ~ "Bienestar psicológico"
+    )
+  ) |>
+  bold_labels() |>
+  bold_p(t = 0.05) |>
+  modify_header(estimate = "**IRR no ajustado**", p.value = "**Valor P**")
+```
+
+```{r}
+tabla_reg_poisson
+```
+
+Basándonos en esta tabla, podemos interpretar los resultados de la siguiente manera:
+
+Ser del sexo femenino esta asociado a un menor riesgo de sufrir un ataque asmático, con un IRR de 0.74 (IC 95%: 0.58, 0.94).
+
+Aquellos con infección respiratoria recurrente tienen un mayor riesgo de sufrir un ataque asmático, con un IRR de 2.47 (IC 95%: 1.84, 3.26).
+
+Un aumento de un punto en la puntuación GHQ-12 (que evalua el bienestar psicológico) incrementa el riesgo de tener un ataque asmático en 1.06 (IC 95%: 1.05, 1.06).
+
+PC3-2\
+SEMANA 12
+
+## 2. Ejemplos de analisis univariado y multivariado en una regresion logistica
+
+### 2.1 El dataset para este ejercicio
+
+```{r}
+hipert_covid <- import(here("data", "s12_hipert_covid.csv"))
+```
+
+un vistazo a los datos
+
+```{r}
+head(hipert_covid)
+```
+
+### 2.2 El analisis univariado
+
+```{r}
+hipert_covid_1 <- hipert_covid |>
+  mutate(hipert = relevel(as.factor(hipert), ref = "no"),
+         sexo = relevel(as.factor(sexo) , ref = "femenino"),
+         desenlace = relevel(as.factor(desenlace), ref = "vivo")) |>
+  na.omit()
+```
+
+### 
+
+```{r}
+tabla_reg_log_univ <- hipert_covid_1 |>
+  tbl_uvregression(
+    include = c(edad, sexo, hipert, p_a_sistolica, p_a_diastolica,
+                frec_cardiaca, frec_respiratoria),
+    y = desenlace,
+    method = glm,
+    method.args = list(family = binomial),
+    exponentiate = TRUE,
+    confint = TRUE,
+    add_estimate_to_reference_rows = FALSE,
+    pvalue_fun = ~style_pvalue(.x, digits = 3),
+    stimate_fun = ~style_number (.x, digits = 2),
+    label = list(
+      edad ~"Edad(años)",
+      sexo ~"Sexo",
+      hipert ~"Hipertension",
+      p_a_sistolica ~"Presion arterial sistolica",
+      p_a_diastolica ~"Presion arterial diastolica (mmHg)",
+      frec_cardiaca ~"Frecuencia cardiaca (lpm)",
+      frec_respiratoria ~"Frecuencia respiratoria (rpm)",
+    )
+  ) |>
+  bold_labels() |>
+  bold_p(t = 0.05) |>
+  modify_header(estimate = "**OR no ajustado**", p.value = "**valor p**" )
+```
+
+```{r}
+tabla_reg_log_univ
+```
+
+### 2.3 El analisis multivariado
+
+**Paso 1: ajuste de modelo inicial**
+
+```{r}
+var_modelo = glm(
+  desenlace ~ edad + sexo + hipert + p_a_sistolica + p_a_diastolica + 
+    frec_cardiaca + frec_respirtatoria,
+  data = hipert_covid_1,
+  family = binomial(link = "logit")
+ )
+```
+
+**Paso 2a : Realizamos modelo de seleccion variables**
+
+```{r}
+multi_forward <- var_modelo |>
+  step(direction = "backrward", trace = FALSE)
+```
+
+**Paso 2b : Realizamos seleccion de variables**
+
+```{r}
+multi_forward <- var_modelo |>
+  step(direction = "forward", trace = FALSE)
+```
+
+**Paso 3c : Realizamos seleccion de variables**
+
+```{r}
+multi_stepwise <- var_modelo |>
+  step(direction = "both", trace = FALSE)
+```
+
+**Paso 3 : Estimados el AIC para los modelos**
+
+```{r}
+summary(multi_backward)
+```
+
+```{r}
+summary(multi_forward)
+```
+
+```{r}
+summary(multi_stepwise)
+```
+
+### 2.5 Evaluacion de clinealidad
+
+```{r}
+performance::check_collinearity(multi_backward, ci = NULL)
+```
+
+```{r}
+performance::check_collinearity(multi_forward, ci = NULL)
+```
+
+```{r}
+performance::check_collinearity(multi_stepwise, ci = NULL)
+```
+
+### 2.7 Reporte de analisis univariado y multivariado
+
+Tabla para resultados de regresion univariado (no ajustado)
+
+```{r}
+tabla_reg_log_univ <- hipert_covid_1 |>
+  tbl_uvregression(
+    include = c(edad, sexo, hipert, p_a_sistolica, p_a_diastolica,
+                frec_cardiaca, frec_respiratoria),
+    y = desenlace,
+    method = glm,
+    method.args = list(family = binomial),
+    exponentiate = TRUE,
+    confint = TRUE,
+    add_estimate_to_reference_rows = FALSE,
+    pvalue_fun = ~style_pvalue(.x, digits = 3),
+    stimate_fun = ~style_number (.x, digits = 2),
+    label = list(
+      edad ~"Edad(años)",
+      sexo ~"Sexo",
+      hipert ~"Hipertension",
+      p_a_sistolica ~"Presion arterial sistolica",
+      p_a_diastolica ~"Presion arterial diastolica (mmHg)",
+      frec_cardiaca ~"Frecuencia cardiaca (lpm)",
+      frec_respiratoria ~"Frecuencia respiratoria (rpm)",
+    )
+  ) |>
+  bold_labels() |>
+  bold_p(t = 0.05) |>
+  modify_header(estimate = "**OR no ajustado**", p.value = "**valor p**" )
+```
+
+Tabla de resultados de regresion multivariado (ajustado)
+
+```{r}
+tabla_multi <- glm(
+  desenlace ~ edad + hipert + frec_cardiaca + frec_respiratoria,
+  family = binomial(link = "logit"),
+  data = hipert_covid_1
+) |>
+  tbl_regression(
+    exponientate = TRUE,
+    conf.int = TRUE,
+    pevaluea_fun = ~style_pevalue(.x, digits =3),
+    estimate_fun = ~style_number(.x, digits = 2)
+    label = list(
+      edad ~"Edad(años)",
+      sexo ~"Sexo",
+      hipert ~"Hipertension",
+      p_a_sistolica ~"Presion arterial sistolica",
+      p_a_diastolica ~"Presion arterial diastolica (mmHg)",
+      frec_cardiaca ~"Frecuencia cardiaca (lpm)",
+      frec_respiratoria ~"Frecuencia respiratoria (rpm)",
+    ) 
+  ) |>
+  bold_labels() |>
+  bold_p(t = 0.05) |>
+  modify_header(estimate = "**OR no ajustado**", p.value = "**valor p**" )
+```
+
+Tabla final
+
+```{r}
+tabla_final <-
+  tbl_merge(
+    list(tabla_univ, tabla_multi),
+    tab_spanner = c("**Univariado**", "**Multivariado")
+  )
+```
